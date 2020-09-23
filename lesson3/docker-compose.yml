@@ -1,0 +1,29 @@
+version: "3"
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports: 
+      - "80:80"
+    volumes:
+      - ./nginx/static:/usr/share/nginx/html
+    networks: 
+      - nginx_apache_network
+
+  apache:
+    build:
+      context: ./apache
+      dockerfile: Dockerfile
+    volumes:
+      - ./apache/static:/usr/local/apache2/htdocs  
+    networks: 
+      - nginx_apache_network
+
+networks:
+  nginx_apache_network:      
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.30.0/24
+
