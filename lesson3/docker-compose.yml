@@ -23,7 +23,7 @@ services:
     networks: 
       - nginx_apache_network
     healthcheck:
-      test: ["CMD", "curl", "-s", "-f", "http://localhost"]
+      test: ["CMD", "curl", "-s", "-S", "-f", "http://localhost"]
       interval: 10s
       timeout: 5s
       retries: 3

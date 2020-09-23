@@ -1,0 +1,9 @@
+version: "2.4"
+services:
+  test:
+    build: ./test
+    depends_on:
+      - nginx
+      - apache
+    networks:
+      - nginx_apache_network    
