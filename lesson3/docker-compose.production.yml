@@ -4,8 +4,6 @@ services:
     image: ${NGINX_IMAGE}
     ports: 
       - "80:80"
-    volumes:
-      - ./nginx/static:/usr/share/nginx/html
     networks: 
       - nginx_apache_network
     depends_on: 
@@ -14,8 +12,6 @@ services:
 
   apache:
     image: ${APACHE_IMAGE}
-    volumes:
-      - ./apache/static:/usr/local/apache2/htdocs  
     networks: 
       - nginx_apache_network
     healthcheck:
