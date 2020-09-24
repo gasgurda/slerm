@@ -1,0 +1,18 @@
+version: "2.4"
+services:
+  nexus3:
+    image: sonatype/nexus3:latest
+    ports:
+      - 8081:8081
+      - 8123:8123
+    volumes:
+      - /opt/nexus3:/nexus-data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - my-docker-network
+networks:
+  my-docker-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.200.201.0/24
