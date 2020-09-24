@@ -18,6 +18,18 @@ Create role woth docker permission
 
 Create user with docker role
 
+On docker host machine
+
+Create file /etc/docker/daemon.json
+
+add parameters
+
+```
+{
+    "insecure-registries" : [ "hostname.cloudapp.net:5000" ]
+}
+```
+
 On client
 
 docker login -u {{ username }} -p {{ password }} localhost:8123

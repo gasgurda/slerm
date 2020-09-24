@@ -1,0 +1,34 @@
+version: "2.4"
+services:
+  nginx:
+    image: ${NGINX_IMAGE}
+    ports: 
+      - "80:80"
+    volumes:
+      - ./nginx/static:/usr/share/nginx/html
+    networks: 
+      - nginx_apache_network
+    depends_on: 
+      apache:
+        condition: service_healthy
+
+  apache:
+    image: ${APACHE_IMAGE}
+    volumes:
+      - ./apache/static:/usr/local/apache2/htdocs  
+    networks: 
+      - nginx_apache_network
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-S", "-f", "http://localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 1s
+
+networks:
+  nginx_apache_network:      
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.30.0/24
+
