@@ -1,0 +1,62 @@
+properties([disableConcurrentBuilds()])
+
+pipeline { 
+    agent any 
+    triggers { pollSCM('* * * * *') }
+    options {
+        skipStagesAfterUnstable()
+	buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20'))
+	timestamps()
+    }
+//    environment {
+// Define parameter in Jenkins item
+//        DOCKER_REGISTRY = '192.168.1.3:8123' 
+//	JENKINS_WORKSPACE = '/opt/jenkins/workspace'
+//	DOCKER_TEST_NODE = 'tcp://192.168.99.240:2376'
+//	DOCKER_PROD_NODE = 'tcp://192.168.99.240:2376'
+//    }
+
+
+    stages {
+        stage('Build') {
+            steps {
+                sh '''
+                    if [ -z "$DOCKER_REGISTRY" ] ||  [ -z "$JENKINS_WORKSPACE" ] ||  [ -z "$DOCKER_TEST_NODE" ] || [ -z "$DOCKER_PROD_NODE" ]; then
+                      exit 1
+                    fi 
+                ''' 
+                sh 'docker build -t ${DOCKER_REGISTRY}/lesson3_nginx:$(echo ${GIT_COMMIT} | head -c 12) lesson3/nginx'
+                sh 'docker build -t ${DOCKER_REGISTRY}/lesson3_apache:$(echo ${GIT_COMMIT} | head -c 12) lesson3/apache'
+            }
+        }
+        stage('Push') { 
+            steps {
+		withCredentials([usernamePassword(credentialsId: 'docker_regestry_cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
+                  sh 'docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY}' 
+                } 
+                sh 'docker push ${DOCKER_REGISTRY}/lesson3_nginx:$(echo ${GIT_COMMIT} | head -c 12)' 
+                sh 'docker push ${DOCKER_REGISTRY}/lesson3_apache:$(echo ${GIT_COMMIT} | head -c 12)'
+                sh 'echo "NGINX_IMAGE=${DOCKER_REGISTRY}/lesson3_nginx:$(echo ${GIT_COMMIT} | head -c 12)" >> lesson3/.env' 
+                sh 'echo "APACHE_IMAGE=${DOCKER_REGISTRY}/lesson3_apache:$(echo ${GIT_COMMIT} | head -c 12)" >> lesson3/.env'
+		sh 'docker rmi ${DOCKER_REGISTRY}/lesson3_nginx:$(echo ${GIT_COMMIT} | head -c 12)'
+		sh 'docker rmi ${DOCKER_REGISTRY}/lesson3_apache:$(echo ${GIT_COMMIT} | head -c 12)'
+            }
+        }
+        stage('test'){
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker_regestry_cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
+                sh 'docker run --rm -v ${JENKINS_WORKSPACE}/${JOB_NAME}/lesson3:/root -e DOCKER_HOST=${DOCKER_TEST_NODE} --entrypoint /bin/sh docker/compose:1.24.0 -c "docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY} && docker-compose --project-directory /root -f /root/docker-compose.production.yml -f /root/docker-compose.test.yml up --abort-on-container-exit --exit-code-from test"'
+                }
+		sh 'docker run --rm -v ${JENKINS_WORKSPACE}/${JOB_NAME}/lesson3:/root -e DOCKER_HOST=${DOCKER_TEST_NODE} --entrypoint /bin/sh docker/compose:1.24.0 -c "docker-compose  -f /root/docker-compose.production.yml -f /root/docker-compose.test.yml  down"'
+            }
+        }
+        stage('Deploy') {
+            steps {
+		withCredentials([usernamePassword(credentialsId: 'docker_regestry_cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
+                sh 'docker run --rm -v ${JENKINS_WORKSPACE}/${JOB_NAME}/lesson3:/root -e DOCKER_HOST=${DOCKER_PROD_NODE} --entrypoint /bin/sh docker/compose:1.24.0 -c "docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY} && docker-compose --project-directory /root -f /root/docker-compose.production.yml up -d"'
+                }
+            }
+        }
+    }
+}
+
