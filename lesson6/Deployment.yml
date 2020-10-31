@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+  labels:
+    app: my-app-deployment-label
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: nginx:1.17-alpine
+        ports:
+        - containerPort: 8080
+        env:
+        - name: FOO # Notice that the case is different here
+                                     # from the key name in the ConfigMap.
+          valueFrom:
+            configMapKeyRef:
+              name: my-configmap           # The ConfigMap this value comes from.
+              key: player_initial_lives # The key to fetch.
+        - name: SUPERPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: my-secret
+              key: mypassword
+        volumeMounts:
+        - name: nginx-config
+          mountPath: "/etc/nginx/conf.d"
+          readOnly: true
+      volumes:    
+      - name: nginx-config
+        configMap:
+          name: my-configmap
+          items:
+          - key: "default.conf"
+            path: "default.conf"
+
